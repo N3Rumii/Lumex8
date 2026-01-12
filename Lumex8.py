@@ -371,7 +371,7 @@ def parse_desktop_file(self, path):
         filtered = [app for app in self.system_apps if text.lower() in app['name'].lower()]
         self.populate_list(filtered)
 
-  def get_selected_app(self):
+   def get_selected_app(self):
         item = self.list_widget.currentItem()
         if item: return item.data(Qt.ItemDataRole.UserRole)
         return None
