@@ -21,17 +21,17 @@ Before installing, make sure you have the following system packages:
 
 Installation
 
-    Download the script Create a directory where you want the app to live, and paste Lumex8.py there. Open your terminal in this directory.
+ Download the script Create a directory where you want the app to live, and paste Lumex8.py there. Open your terminal in this directory.
 
-    Set up the Virtual Environment Run the following command to create a virtual environment:
+ Set up the Virtual Environment Run the following command to create a virtual environment:
     
 
-python3 -m venv venv
+    python3 -m venv venv
 
 Activate the Environment
 
 
-source venv/bin/activate
+    source venv/bin/activate
 
 Your command line should now look something like (venv) user@computer:~/lumex8$.
 
@@ -45,14 +45,14 @@ Usage
 To launch the script, simply run:
 
 
-python lumex8.py
+    python lumex8.py
 
 /Note (Using uv)
 
 When I was coding this in PyCharm, it handled the environment setup for me. Recently, I've started using uv for a faster workflow. If you have uv installed, you can skip the manual venv activation and just run:
 
 
-uv run lumex8.py
+    uv run lumex8.py
 
 FAQ
 
