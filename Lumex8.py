@@ -357,7 +357,7 @@ def parse_desktop_file(self, path):
         
         return {"name": final_name, "exec": exec_cmd, "icon_name": icon, "path": path}
 
-    def populate_list(self, apps):
+  def populate_list(self, apps):
         self.list_widget.clear()
         for app in apps:
             item = QListWidgetItem(app['name'])
@@ -367,11 +367,11 @@ def parse_desktop_file(self, path):
             item.setData(Qt.ItemDataRole.UserRole, app)
             self.list_widget.addItem(item)
 
-    def filter_list(self, text):
+   def filter_list(self, text):
         filtered = [app for app in self.system_apps if text.lower() in app['name'].lower()]
         self.populate_list(filtered)
 
-    def get_selected_app(self):
+  def get_selected_app(self):
         item = self.list_widget.currentItem()
         if item: return item.data(Qt.ItemDataRole.UserRole)
         return None
@@ -382,22 +382,29 @@ class AppEditorDialog(QDialog):
         super().__init__(parent)
         self.parent_window = parent_window
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
-        self.setWindowTitle("Edit Item")
+        self.setWindowTitle("Properties")
         self.setFixedWidth(400)
         self.app_data = app_data or {}
         
         layout = QFormLayout(self)
+        
         self.name_input = QLineEdit(self.app_data.get('name', ''))
         layout.addRow("Name:", self.name_input)
         
-        self.type_combo = QComboBox()
-        self.type_combo.addItems(["app", "desktop"]) 
-        current_type = self.app_data.get('type', 'app')
-        self.type_combo.setCurrentText(current_type)
-        self.type_combo.currentTextChanged.connect(self.toggle_fields)
-        layout.addRow("Type:", self.type_combo)
+        # 1. Primary Mode Selection
+        self.mode_combo = QComboBox()
+        self.mode_combo.addItems(["Run Application", "Special Tile"])
+        self.mode_combo.currentTextChanged.connect(self.refresh_layout)
+        layout.addRow("Tile Mode:", self.mode_combo)
 
-        # Paths Container
+        # 2. Special Function Selection (Hidden by default)
+        self.special_combo = QComboBox()
+        self.special_combo.addItems(["Show Desktop"]) 
+        # Future ideas: ["Show Desktop", "Sleep", "Restart", "Shutdown"]
+        self.special_label = QLabel("Function:")
+        layout.addRow(self.special_label, self.special_combo)
+
+        # 3. Application Paths (Grouped)
         self.grp_paths = QWidget()
         path_layout = QFormLayout(self.grp_paths)
         path_layout.setContentsMargins(0,0,0,0)
@@ -428,7 +435,7 @@ class AppEditorDialog(QDialog):
         
         layout.addRow(self.grp_paths)
 
-        # Toggles
+        # 4. Toggles
         self.full_tile_check = QCheckBox("Full Tile Mode (Image fills tile)")
         self.full_tile_check.setChecked(self.app_data.get('full_tile', False))
         layout.addRow("", self.full_tile_check)
@@ -437,6 +444,7 @@ class AppEditorDialog(QDialog):
         self.wide_tile_check.setChecked(self.app_data.get('wide_tile', False))
         layout.addRow("", self.wide_tile_check)
 
+        # 5. Color
         self.color_btn = QPushButton("Pick Color")
         default_color = '#00a300'
         if self.parent_window:
@@ -446,6 +454,7 @@ class AppEditorDialog(QDialog):
         self.color_btn.clicked.connect(self.pick_color)
         layout.addRow("Tile Color:", self.color_btn)
 
+        # Footer
         btn_box = QHBoxLayout()
         save_btn = QPushButton("Save")
         save_btn.clicked.connect(self.accept)
@@ -455,11 +464,24 @@ class AppEditorDialog(QDialog):
         btn_box.addWidget(cancel_btn)
         layout.addRow(btn_box)
         
-        self.toggle_fields(current_type)
+        # Initialize State
+        current_type = self.app_data.get('type', 'app')
+        if current_type == 'desktop':
+            self.mode_combo.setCurrentText("Special Tile")
+            self.special_combo.setCurrentText("Show Desktop")
+        else:
+            self.mode_combo.setCurrentText("Run Application")
+            
+        self.refresh_layout()
 
-    def toggle_fields(self, type_text):
-        is_app = (type_text == "app")
+    def refresh_layout(self):
+        mode = self.mode_combo.currentText()
+        is_app = (mode == "Run Application")
+        
+        # Toggle visibility
         self.grp_paths.setVisible(is_app)
+        self.special_combo.setVisible(not is_app)
+        self.special_label.setVisible(not is_app)
 
     def browse_file(self, line_edit):
         dlg = QFileDialog(self, "Select File")
@@ -489,21 +511,36 @@ class AppEditorDialog(QDialog):
                     self.app_data['icon'] = app['icon_name']
 
     def get_data(self):
+        # Determine internal 'type' based on UI selection
+        mode = self.mode_combo.currentText()
+        internal_type = 'app'
+        
+        if mode == "Special Tile":
+            special_func = self.special_combo.currentText()
+            if special_func == "Show Desktop":
+                internal_type = 'desktop'
+            # Add elif for future functions here
+        
         data = {
             "name": self.name_input.text(),
-            "type": self.type_combo.currentText(),
+            "type": internal_type,
             "color": self.selected_color,
             "icon": self.app_data.get('icon', None),
             "full_tile": self.full_tile_check.isChecked(),
             "wide_tile": self.wide_tile_check.isChecked()
         }
-        if data['type'] == 'app':
+        
+        if internal_type == 'app':
             data['script_path'] = self.script_input.text()
             data['python_path'] = self.python_input.text()
         else:
-            data['apps'] = self.app_data.get('apps', [])
+            # Special tiles usually don't need paths, but keep keys to avoid errors
+            data['script_path'] = ""
+            data['python_path'] = ""
+            
+        # Ensure apps list exists for structure consistency (though specific to folders previously)
+        data['apps'] = self.app_data.get('apps', [])
         return data
-
 # --- HELPER: Settings & Themes Dialog ---
 class SettingsDialog(QDialog):
     def __init__(self, parent=None):
