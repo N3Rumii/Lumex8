@@ -47,7 +47,7 @@ To launch the script, simply run:
 
 python lumex8.py
 
-Developer Note (Using uv)
+/Note (Using uv)
 
 When I was coding this in PyCharm, it handled the environment setup for me. Recently, I've started using uv for a faster workflow. If you have uv installed, you can skip the manual venv activation and just run:
 
