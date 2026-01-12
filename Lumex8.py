@@ -357,7 +357,7 @@ def parse_desktop_file(self, path):
         
         return {"name": final_name, "exec": exec_cmd, "icon_name": icon, "path": path}
 
-  def populate_list(self, apps):
+    def populate_list(self, apps):
         self.list_widget.clear()
         for app in apps:
             item = QListWidgetItem(app['name'])
