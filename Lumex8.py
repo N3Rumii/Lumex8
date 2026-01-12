@@ -150,7 +150,6 @@ class FloatingStartButton(QWidget):
         """)
 
 # --- HELPER: App Importer ---
-# --- HELPER: App Importer (Robust Version) ---
 class AppImporterDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -306,23 +305,56 @@ class AppImporterDialog(QDialog):
                     except: pass
         self.system_apps.sort(key=lambda x: x['name'])
         self.populate_list(self.system_apps)
-
-    def parse_desktop_file(self, path):
+def parse_desktop_file(self, path):
         name = None
+        loc_name = None 
         exec_cmd = None
         icon = None
         no_display = False
+        hidden = False
+        
+        # Flag to track if we are inside the main [Desktop Entry] section
+        in_main_section = False
+        
         with open(path, 'r', errors='ignore') as f:
             for line in f:
                 line = line.strip()
-                if line.startswith("Name="): name = line.split("=", 1)[1]
-                elif line.startswith("Exec="): exec_cmd = line.split("=", 1)[1]
-                elif line.startswith("Icon="): icon = line.split("=", 1)[1]
-                elif line.startswith("NoDisplay=true"): no_display = True
-        if no_display or not name or not exec_cmd: return None
+                if not line or line.startswith('#'): continue
+                
+                # Check for Section Headers
+                if line.startswith('['):
+                    if line == "[Desktop Entry]":
+                        in_main_section = True
+                        continue
+                    else:
+                        # If we hit ANY other section (like [Desktop Action...]), STOP reading
+                        if in_main_section: 
+                            break 
+                        else:
+                            continue # Skip lines until we find [Desktop Entry]
+
+                # Only parse lines if we are inside the main section
+                if in_main_section and "=" in line:
+                    key, value = line.split("=", 1)
+                    key = key.strip()
+                    value = value.strip()
+                    
+                    if key == "Name": name = value
+                    elif key.startswith("Name["): loc_name = value 
+                    elif key == "Exec": exec_cmd = value
+                    elif key == "Icon": icon = value
+                    elif key == "NoDisplay" and value.lower() == "true": no_display = True
+                    elif key == "Hidden" and value.lower() == "true": hidden = True
+                    elif key == "Type" and value.lower() != "application": return None 
+
+        if no_display or hidden: return None
+        
+        final_name = name if name else loc_name
+        if not final_name or not exec_cmd: return None
+        
         exec_cmd = exec_cmd.split('%')[0].strip()
-        exec_cmd = exec_cmd.split('@@')[0].strip()
-        return {"name": name, "exec": exec_cmd, "icon_name": icon, "path": path}
+        
+        return {"name": final_name, "exec": exec_cmd, "icon_name": icon, "path": path}
 
     def populate_list(self, apps):
         self.list_widget.clear()
