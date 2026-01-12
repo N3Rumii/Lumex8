@@ -2,7 +2,7 @@ Lumex8
 
 Lumex8 is a Python script launcher inspired by the Windows 8 tile start menu.
 
-I built this because I wanted an easier way to launch my Python scripts. I do most of my work on a graphic tablet, so I wanted a touchscreen-friendly interface. It’s been a long time since I used the actual Windows 8 menu, but this is how I remember it feeling—sort of.
+I built this because I wanted an easier way to launch my Python scripts. I do most of my work on a graphic tablet, so I wanted a touchscreen-friendly interface. It’s been a long time since I used the actual Windows 8 menu, but this is how I remember it feeling—sort of. To full screen aplication press "Super + P"
 Compatibility
 
 This script is designed for Linux. It should work on any distro provided you have Gnome Terminal installed.
