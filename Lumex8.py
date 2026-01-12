@@ -150,6 +150,7 @@ class FloatingStartButton(QWidget):
         """)
 
 # --- HELPER: App Importer ---
+# --- HELPER: App Importer (Robust Version) ---
 class AppImporterDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -182,6 +183,108 @@ class AppImporterDialog(QDialog):
         self.system_apps = []
         self.load_system_apps()
 
+    def load_system_apps(self):
+        # Expanded paths for Linux Mint / Ubuntu / Flatpak / Snap
+        paths = [
+            "/usr/share/applications",
+            "/usr/local/share/applications",
+            os.path.expanduser("~/.local/share/applications"),
+            "/var/lib/flatpak/exports/share/applications",
+            os.path.expanduser("~/.local/share/flatpak/exports/share/applications"),
+            "/var/lib/snapd/desktop/applications",
+            "/snap/bin" # Sometimes binaries are here directly, but usually handled by desktop files above
+        ]
+        
+        unique_ids = set()
+        
+        for path in paths:
+            if not os.path.exists(path): continue
+            
+            # Walk through subdirectories (some distros organize apps in subfolders)
+            for root, _, files in os.walk(path):
+                for file in files:
+                    if file.endswith(".desktop"):
+                        full_path = os.path.join(root, file)
+                        try:
+                            data = self.parse_desktop_file(full_path)
+                            # Use name+exec as unique ID to prevent duplicates
+                            if data:
+                                uid = f"{data['name']}_{data['exec']}"
+                                if uid not in unique_ids:
+                                    self.system_apps.append(data)
+                                    unique_ids.add(uid)
+                        except: pass
+                        
+        self.system_apps.sort(key=lambda x: x['name'].lower())
+        self.populate_list(self.system_apps)
+
+    def parse_desktop_file(self, path):
+        # Robust manual parsing logic
+        name = None
+        loc_name = None # Localized name fallback
+        exec_cmd = None
+        icon = None
+        no_display = False
+        hidden = False
+        
+        with open(path, 'r', errors='ignore') as f:
+            lines = f.readlines()
+            
+        for line in lines:
+            line = line.strip()
+            if not line or line.startswith('#'): continue
+            
+            # Split by first '=' only
+            if "=" in line:
+                key, value = line.split("=", 1)
+                key = key.strip()
+                value = value.strip()
+                
+                if key == "Name": name = value
+                elif key.startswith("Name["): loc_name = value # Fallback name
+                elif key == "Exec": exec_cmd = value
+                elif key == "Icon": icon = value
+                elif key == "NoDisplay" and value.lower() == "true": no_display = True
+                elif key == "Hidden" and value.lower() == "true": hidden = True
+                elif key == "Type" and value.lower() != "application": return None # Skip links/directories
+
+        if no_display or hidden: return None
+        
+        # Use localized name if main name is missing
+        final_name = name if name else loc_name
+        
+        if not final_name or not exec_cmd: return None
+        
+        # Cleanup Exec command (remove %u, %F, etc.)
+        exec_cmd = exec_cmd.split('%')[0].strip()
+        
+        return {"name": final_name, "exec": exec_cmd, "icon_name": icon, "path": path}
+
+    def populate_list(self, apps):
+        self.list_widget.clear()
+        for app in apps:
+            item = QListWidgetItem(app['name'])
+            # Try to load icon
+            if app['icon_name']:
+                if os.path.exists(app['icon_name']):
+                    icon = QIcon(app['icon_name'])
+                else:
+                    icon = QIcon.fromTheme(app['icon_name'])
+                    
+                if not icon.isNull(): 
+                    item.setIcon(icon)
+            
+            item.setData(Qt.ItemDataRole.UserRole, app)
+            self.list_widget.addItem(item)
+
+    def filter_list(self, text):
+        filtered = [app for app in self.system_apps if text.lower() in app['name'].lower()]
+        self.populate_list(filtered)
+
+    def get_selected_app(self):
+        item = self.list_widget.currentItem()
+        if item: return item.data(Qt.ItemDataRole.UserRole)
+        return None
     def load_system_apps(self):
         paths = [
             "/usr/share/applications",
