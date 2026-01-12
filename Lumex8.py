@@ -267,7 +267,7 @@ class AppImporterDialog(QDialog):
         
         return {"name": final_name, "exec": exec_cmd, "icon_name": icon, "path": path}
 
-    def populate_list(self, apps):
+def populate_list(self, apps):
         self.list_widget.clear()
         for app in apps:
             item = QListWidgetItem(app['name'])
@@ -277,15 +277,15 @@ class AppImporterDialog(QDialog):
             item.setData(Qt.ItemDataRole.UserRole, app)
             self.list_widget.addItem(item)
 
-    def filter_list(self, text):
+def filter_list(self, text):
         filtered = [app for app in self.system_apps if text.lower() in app['name'].lower()]
         self.populate_list(filtered)
 
-    def get_selected_app(self):
+def get_selected_app(self):
         item = self.list_widget.currentItem()
         if item: return item.data(Qt.ItemDataRole.UserRole)
         return None
-    def load_system_apps(self):
+def load_system_apps(self):
         paths = [
             "/usr/share/applications",
             os.path.expanduser("~/.local/share/applications"),
@@ -357,7 +357,7 @@ def parse_desktop_file(self, path):
         
         return {"name": final_name, "exec": exec_cmd, "icon_name": icon, "path": path}
 
-    def populate_list(self, apps):
+def populate_list(self, apps):
         self.list_widget.clear()
         for app in apps:
             item = QListWidgetItem(app['name'])
@@ -367,11 +367,11 @@ def parse_desktop_file(self, path):
             item.setData(Qt.ItemDataRole.UserRole, app)
             self.list_widget.addItem(item)
 
-   def filter_list(self, text):
+def filter_list(self, text):
         filtered = [app for app in self.system_apps if text.lower() in app['name'].lower()]
         self.populate_list(filtered)
 
-   def get_selected_app(self):
+def get_selected_app(self):
         item = self.list_widget.currentItem()
         if item: return item.data(Qt.ItemDataRole.UserRole)
         return None
