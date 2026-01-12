@@ -16,7 +16,7 @@ from PyQt6.QtCore import (Qt, QMimeData, QPoint, QSize, QPropertyAnimation,
 from PyQt6.QtGui import QAction, QPixmap, QFont, QColor, QDrag, QIcon, QPainter, QKeyEvent, QFontMetrics
 from pynput import keyboard
 
-# --- GLOBAL CACHE ---
+# --- GLOBAL CACHE --
 ICON_CACHE = {}
 
 def get_cached_pixmap(path, w, h):
