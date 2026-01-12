@@ -49,7 +49,7 @@ To launch the script, simply run:
 
 /Note (Using uv)
 
-When I was coding this in PyCharm, it handled the environment setup for me. Recently, I've started using uv for a faster workflow. If you have uv installed, you can skip the manual venv activation and just run:
+When I was coding this in PyCharm, it handled the environment setup for me and it used UV. Recently, If you have uv installed, you can skip the manual venv activation and just run:
 
 
     uv run lumex8.py
