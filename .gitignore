@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+*.egg
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+
+# Runtime config (user-specific paths, local data)
+config.json
+config.json.bak
+
+# Generated scripts
+launch.sh
+
+# C++ build artifacts
+project2/cplusplusproject/build/
+project2/cplusplusproject/main
+project2/cplusplusproject/viewer
+project2/cplusplusproject/comand
+
+# OS files
+.DS_Store
+Thumbs.db
