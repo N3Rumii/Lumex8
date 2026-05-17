@@ -25,11 +25,11 @@ config.json.bak
 # Generated scripts
 launch.sh
 
-# C++ build artifacts
-project2/cplusplusproject/build/
-project2/cplusplusproject/main
-project2/cplusplusproject/viewer
-project2/cplusplusproject/comand
+# SecureImageViewer (separate project)
+project2/
+
+# Old/backup files
+*.old
 
 # OS files
 .DS_Store

@@ -1,9 +1,0 @@
-[Desktop Entry]
-Name=Lumex8
-Comment=Windows 8 style tile launcher
-Exec=/home/n7reny/PycharmProjects/dpsk/cli/launch.sh
-Icon=/home/n7reny/PycharmProjects/dpsk/cli/lumex8/icons/cmd_unpin.svg
-Terminal=false
-Type=Application
-Categories=Utility;
-StartupNotify=false
