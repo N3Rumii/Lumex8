@@ -3,7 +3,6 @@
 # dependencies = [
 #     "PyQt6",
 #     "pynput",
-#     "pygame",
 # ]
 # ///
 
