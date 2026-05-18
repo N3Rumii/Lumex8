@@ -94,16 +94,26 @@ echo -e "  ${GREEN}✓${NC} $($PYTHON --version)"
 # Qt cursor support (needed on X11)
 install_system_pkg "libxcb-cursor0"
 
-# Ensure venv module is available (install matching pythonX.Y-venv pkg)
+# Ensure venv + pip are available (Ubuntu strips ensurepip from base Python)
 PY_MAJOR=$($PYTHON -c "import sys; print(sys.version_info.major)")
 PY_MINOR=$($PYTHON -c "import sys; print(sys.version_info.minor)")
 VENV_PKG="python${PY_MAJOR}.${PY_MINOR}-venv"
+PIP_PKG="python${PY_MAJOR}.${PY_MINOR}-pip"
+
 if ! $PYTHON -c "import venv" &>/dev/null; then
-    echo -e "  ${YELLOW}→${NC} Installing $VENV_PKG..."
     install_system_pkg "$VENV_PKG"
     if ! $PYTHON -c "import venv" &>/dev/null; then
         echo -e "${RED}Error: venv module still unavailable after installing $VENV_PKG.${NC}"
         exit 1
+    fi
+fi
+
+# On Ubuntu/Debian, ensurepip is stripped — need the -pip package
+if ! $PYTHON -c "import ensurepip" &>/dev/null; then
+    install_system_pkg "$PIP_PKG"
+    if ! $PYTHON -c "import ensurepip" &>/dev/null; then
+        # Some releases name it python3-pip-whl; try generic fallback
+        install_system_pkg "python3-pip" 2>/dev/null || true
     fi
 fi
 
@@ -148,10 +158,7 @@ else
 
     if [ ! -d ".venv" ]; then
         echo -e "  ${YELLOW}→${NC} Creating virtual environment..."
-        $PYTHON -m venv .venv --without-pip
-        # Bootstrap pip explicitly (more reliable than venv's built-in)
-        .venv/bin/python -m ensurepip --upgrade 2>/dev/null || \
-            .venv/bin/python -m ensurepip 2>/dev/null || true
+        $PYTHON -m venv .venv
         if [ ! -f ".venv/bin/python" ]; then
             echo -e "${RED}Error: venv creation failed — no python binary in .venv/bin/${NC}"
             exit 1
