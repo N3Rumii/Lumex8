@@ -94,9 +94,17 @@ echo -e "  ${GREEN}✓${NC} $($PYTHON --version)"
 # Qt cursor support (needed on X11)
 install_system_pkg "libxcb-cursor0"
 
-# Venv
+# Ensure venv module is available (install matching pythonX.Y-venv pkg)
+PY_MAJOR=$($PYTHON -c "import sys; print(sys.version_info.major)")
+PY_MINOR=$($PYTHON -c "import sys; print(sys.version_info.minor)")
+VENV_PKG="python${PY_MAJOR}.${PY_MINOR}-venv"
 if ! $PYTHON -c "import venv" &>/dev/null; then
-    install_system_pkg "$($PYTHON -c 'import sys; print(f"python{sys.version_info.major}.{sys.version_info.minor}-venv")')"
+    echo -e "  ${YELLOW}→${NC} Installing $VENV_PKG..."
+    install_system_pkg "$VENV_PKG"
+    if ! $PYTHON -c "import venv" &>/dev/null; then
+        echo -e "${RED}Error: venv module still unavailable after installing $VENV_PKG.${NC}"
+        exit 1
+    fi
 fi
 
 # ---- Step 3: Gamepad support (optional) ----
@@ -139,13 +147,21 @@ else
     echo -e "  ${CYAN}→${NC} Using pip + virtual environment"
 
     if [ ! -d ".venv" ]; then
-        $PYTHON -m venv .venv
+        echo -e "  ${YELLOW}→${NC} Creating virtual environment..."
+        $PYTHON -m venv .venv --without-pip
+        # Bootstrap pip explicitly (more reliable than venv's built-in)
+        .venv/bin/python -m ensurepip --upgrade 2>/dev/null || \
+            .venv/bin/python -m ensurepip 2>/dev/null || true
+        if [ ! -f ".venv/bin/python" ]; then
+            echo -e "${RED}Error: venv creation failed — no python binary in .venv/bin/${NC}"
+            exit 1
+        fi
         echo -e "  ${GREEN}✓${NC} Created .venv/"
     fi
-    source .venv/bin/activate
 
-    pip install --quiet --upgrade pip
-    pip install --quiet PyQt6 pynput $GAMEPAD_DEPS
+    VENV_PY=".venv/bin/python"
+    $VENV_PY -m pip install --quiet --upgrade pip
+    $VENV_PY -m pip install --quiet PyQt6 pynput $GAMEPAD_DEPS
     echo -e "  ${GREEN}✓${NC} Core deps installed"
     if $INSTALL_PYGAME; then
         echo -e "  ${GREEN}✓${NC} pygame installed (gamepad ready)"
@@ -164,8 +180,7 @@ else
     cat > "$LAUNCHER" << LAUNCH_EOF
 #!/usr/bin/env bash
 cd "$PROJECT_ROOT"
-source .venv/bin/activate
-python "$PROJECT_ROOT/lumex8/__main__.py"
+"$PROJECT_ROOT/.venv/bin/python" "$PROJECT_ROOT/lumex8/__main__.py"
 LAUNCH_EOF
 fi
 chmod +x "$LAUNCHER"
