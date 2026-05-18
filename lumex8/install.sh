@@ -1,231 +1,104 @@
 #!/usr/bin/env bash
 #
-# Lumex8 — self-installing launcher setup
+# Lumex8 — single-command installer
 #
-# Run as root (sudo) to auto-install everything:
-#   sudo ./install.sh
-#
-# Run as normal user for guided setup:
-#   ./install.sh
+#   chmod +x install.sh
+#   ./install.sh               # guided (asks about gamepad)
+#   sudo ./install.sh           # auto-installs everything
 #
 set -e
 
-BOLD="\033[1m"
-GREEN="\033[0;32m"
-YELLOW="\033[0;33m"
-CYAN="\033[0;36m"
-RED="\033[0;31m"
-NC="\033[0m"
+BOLD="\033[1m"; GREEN="\033[0;32m"; YELLOW="\033[0;33m"
+CYAN="\033[0;36m";   RED="\033[0;31m";   NC="\033[0m"
 
-# ---- Detect root ----
-if [ "$(id -u)" -eq 0 ]; then
-    IS_ROOT=true
-    SUDO=""
-else
-    IS_ROOT=false
-    SUDO="sudo"
-fi
+echo -e "${CYAN}${BOLD}  Lumex8 Installer${NC}
+"
 
-# ---- Banner ----
-echo -e "${CYAN}${BOLD}"
-echo "  _      ____  __  __ _____ ____   _  _ "
-echo " | |    |  _ \|  \/  | ____|___ \ / || |"
-echo " | |    | |_) | |\/| |  _|   __) | || |"
-echo " | |___ |  __/| |  | | |___ / __/| || |"
-echo " |_____||_|   |_|  |_|_____|_____|_||_|"
-echo -e "${NC}"
-echo -e "${BOLD}Lumex8 Installer${NC}"
-echo ""
-
-# ---- Step 1: Project root ----
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_ROOT"
-echo -e "  Project root: ${CYAN}$PROJECT_ROOT${NC}"
 
-if [ ! -f "lumex8/__main__.py" ]; then
-    echo -e "${RED}Error: Can't find lumex8/ package${NC}"
-    exit 1
-fi
+[ -f "lumex8/__main__.py" ] || { echo -e "${RED}Error: lumex8/ not found${NC}"; exit 1; }
 
-# ---- Step 2: Auto-install system packages ----
-install_system_pkg() {
-    local pkg="$1"
-    if dpkg -s "$pkg" &>/dev/null; then
-        echo -e "  ${GREEN}✓${NC} $pkg"
-        return 0
-    fi
-    if $IS_ROOT; then
-        echo -e "  ${YELLOW}→${NC} Installing $pkg..."
-        apt-get update -qq
-        apt-get install -y -qq "$pkg"
-        echo -e "  ${GREEN}✓${NC} $pkg (installed)"
-    else
-        echo -e "  ${YELLOW}→${NC} Installing $pkg..."
-        $SUDO apt-get update -qq 2>/dev/null || true
-        $SUDO apt-get install -y -qq "$pkg"
-        echo -e "  ${GREEN}✓${NC} $pkg (installed)"
-    fi
+# ---- uv ----
+install_uv() {
+    echo -e "  ${YELLOW}→${NC} Installing uv..."
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    export PATH="$HOME/.cargo/bin:$PATH"
+    [ -f "$HOME/.cargo/env" ] && source "$HOME/.cargo/env"
+    echo -e "  ${GREEN}✓${NC} uv installed"
 }
 
-echo -e "
-${BOLD}Step 1: System packages${NC}"
+command -v uv &>/dev/null || install_uv
 
-# Python + venv
-for py in python3.12 python3.13 python3; do
-    if command -v "$py" &>/dev/null; then
-        PYTHON="$py"
-        break
-    fi
-done
+echo -e "  ${GREEN}✓${NC} uv $(uv --version 2>/dev/null | head -1)"
 
-if [ -z "$PYTHON" ]; then
-    if command -v apt-get &>/dev/null; then
-        install_system_pkg "python3.12"
-        install_system_pkg "python3.12-venv"
-        PYTHON="python3.12"
-    else
-        echo -e "${RED}Error: Python 3.12+ not found and apt not available.${NC}"
-        exit 1
-    fi
+# ---- System deps (Qt needs X11 cursor) ----
+if ! dpkg -s libxcb-cursor0 &>/dev/null 2>&1; then
+    echo -e "  ${YELLOW}→${NC} Installing libxcb-cursor0..."
+    sudo apt-get update -qq 2>/dev/null || true
+    sudo apt-get install -y -qq libxcb-cursor0
 fi
-echo -e "  ${GREEN}✓${NC} $($PYTHON --version)"
+echo -e "  ${GREEN}✓${NC} libxcb-cursor0"
 
-# Qt cursor support (needed on X11)
-install_system_pkg "libxcb-cursor0"
-
-# Ensure venv + pip are available (Ubuntu strips ensurepip from base Python)
-PY_MAJOR=$($PYTHON -c "import sys; print(sys.version_info.major)")
-PY_MINOR=$($PYTHON -c "import sys; print(sys.version_info.minor)")
-VENV_PKG="python${PY_MAJOR}.${PY_MINOR}-venv"
-PIP_PKG="python${PY_MAJOR}.${PY_MINOR}-pip"
-
-if ! $PYTHON -c "import venv" &>/dev/null; then
-    install_system_pkg "$VENV_PKG"
-    if ! $PYTHON -c "import venv" &>/dev/null; then
-        echo -e "${RED}Error: venv module still unavailable after installing $VENV_PKG.${NC}"
-        exit 1
-    fi
-fi
-
-# On Ubuntu/Debian, ensurepip is stripped — need the -pip package
-if ! $PYTHON -c "import ensurepip" &>/dev/null; then
-    install_system_pkg "$PIP_PKG"
-    if ! $PYTHON -c "import ensurepip" &>/dev/null; then
-        # Some releases name it python3-pip-whl; try generic fallback
-        install_system_pkg "python3-pip" 2>/dev/null || true
-    fi
-fi
-
-# ---- Step 3: Gamepad support (optional) ----
-echo -e "
-${BOLD}Step 2: Gamepad support${NC}"
-INSTALL_PYGAME=false
-
-if $IS_ROOT; then
-    INSTALL_PYGAME=true
-    echo -e "  ${CYAN}→${NC} Running as root — including gamepad support"
+# ---- Gamepad (optional) ----
+GAMEPAD_PKGS=""
+if [ "$(id -u)" -eq 0 ]; then
+    # Root: auto-include
+    GAMEPAD_PKGS="libsdl2-2.0-0 libsdl2-image-2.0-0 libsdl2-mixer-2.0-0 libsdl2-ttf-2.0-0"
+    echo -e "  ${CYAN}→${NC} Running as root — including SDL2 + pygame for gamepad"
 else
-    echo -ne "  Install gamepad support? (requires SDL2 + pygame) [y/N] "
-    read -r answer
+    read -p "  Install gamepad support (SDL2 + pygame)? [y/N] " -r answer
     case "$answer" in
-        [yY]|[yY][eE][sS]) INSTALL_PYGAME=true ;;
-        *) echo -e "  ${CYAN}→${NC} Skipping gamepad support (run again with -g to add)" ;;
+        [yY]*) GAMEPAD_PKGS="libsdl2-2.0-0 libsdl2-image-2.0-0 libsdl2-mixer-2.0-0 libsdl2-ttf-2.0-0" ;;
+        *)     echo -e "  ${CYAN}→${NC} Skipping gamepad" ;;
     esac
 fi
 
-if $INSTALL_PYGAME; then
-    # SDL2 runtime libs
-    for sdl in libsdl2-2.0-0 libsdl2-image-2.0-0 libsdl2-mixer-2.0-0 libsdl2-ttf-2.0-0; do
-        install_system_pkg "$sdl"
+if [ -n "$GAMEPAD_PKGS" ]; then
+    for pkg in $GAMEPAD_PKGS; do
+        dpkg -s "$pkg" &>/dev/null 2>&1 && echo -e "  ${GREEN}✓${NC} $pkg" || \
+            { sudo apt-get install -y -qq "$pkg" 2>/dev/null; \
+              echo -e "  ${GREEN}✓${NC} $pkg (installed)"; }
     done
-    GAMEPAD_DEPS="pygame"
-else
-    GAMEPAD_DEPS=""
+    # Install pygame into uv's environment
+    uv pip install --system pygame 2>/dev/null || true
+    echo -e "  ${GREEN}✓${NC} pygame (gamepad ready)"
 fi
 
-# ---- Step 4: Choose runner ----
-echo -e "
-${BOLD}Step 3: Python dependencies${NC}"
-
-if command -v uv &>/dev/null; then
-    USE_UV=true
-    echo -e "  ${GREEN}✓${NC} uv detected"
-    echo -e "  ${CYAN}→${NC} Dependencies declared in __main__.py inline metadata"
-else
-    USE_UV=false
-    echo -e "  ${CYAN}→${NC} Using pip + virtual environment"
-
-    if [ ! -d ".venv" ]; then
-        echo -e "  ${YELLOW}→${NC} Creating virtual environment..."
-        $PYTHON -m venv .venv
-        if [ ! -f ".venv/bin/python" ]; then
-            echo -e "${RED}Error: venv creation failed — no python binary in .venv/bin/${NC}"
-            exit 1
-        fi
-        echo -e "  ${GREEN}✓${NC} Created .venv/"
-    fi
-
-    VENV_PY=".venv/bin/python"
-    $VENV_PY -m pip install --quiet --upgrade pip
-    $VENV_PY -m pip install --quiet PyQt6 pynput $GAMEPAD_DEPS
-    echo -e "  ${GREEN}✓${NC} Core deps installed"
-    if $INSTALL_PYGAME; then
-        echo -e "  ${GREEN}✓${NC} pygame installed (gamepad ready)"
-    fi
-fi
-
-# ---- Step 5: Generate launch.sh ----
+# ---- Launch script ----
 LAUNCHER="$PROJECT_ROOT/launch.sh"
-if $USE_UV; then
-    cat > "$LAUNCHER" << LAUNCH_EOF
+cat > "$LAUNCHER" << EOF
 #!/usr/bin/env bash
 cd "$PROJECT_ROOT"
 uv run "$PROJECT_ROOT/lumex8/__main__.py"
-LAUNCH_EOF
-else
-    cat > "$LAUNCHER" << LAUNCH_EOF
-#!/usr/bin/env bash
-cd "$PROJECT_ROOT"
-"$PROJECT_ROOT/.venv/bin/python" "$PROJECT_ROOT/lumex8/__main__.py"
-LAUNCH_EOF
-fi
+EOF
 chmod +x "$LAUNCHER"
-echo -e "  ${GREEN}✓${NC} Created launch.sh"
+echo -e "  ${GREEN}✓${NC} launch.sh"
 
-# ---- Step 6: Generate .desktop ----
+# ---- Desktop entry ----
 DESKTOP="$PROJECT_ROOT/lumex8.desktop"
-ICON_PATH="$PROJECT_ROOT/lumex8/icons/cmd_unpin.svg"
-cat > "$DESKTOP" << DESKTOP_EOF
+cat > "$DESKTOP" << EOF
 [Desktop Entry]
 Name=Lumex8
 Comment=Windows 8 style tile launcher
 Exec=$LAUNCHER
-Icon=$ICON_PATH
+Icon=$SCRIPT_DIR/icons/cmd_unpin.svg
 Terminal=false
 Type=Application
 Categories=Utility;
 StartupNotify=false
-DESKTOP_EOF
+EOF
 chmod +x "$DESKTOP"
-echo -e "  ${GREEN}✓${NC} Created lumex8.desktop"
+echo -e "  ${GREEN}✓${NC} lumex8.desktop"
 
-# ---- Step 7: Revert ownership if ran as root ----
-if $IS_ROOT; then
-    USER_HOME=$(eval echo "~$SUDO_USER")
-    if [ -n "$SUDO_USER" ] && [ "$SUDO_USER" != "root" ]; then
-        chown -R "$SUDO_USER:$SUDO_USER" "$PROJECT_ROOT" 2>/dev/null || true
-        echo -e "  ${GREEN}✓${NC} Ownership reverted to $SUDO_USER"
-    fi
+# ---- Ownership fix (if root) ----
+if [ "$(id -u)" -eq 0 ] && [ -n "$SUDO_USER" ] && [ "$SUDO_USER" != "root" ]; then
+    chown -R "$SUDO_USER:$SUDO_USER" "$PROJECT_ROOT" 2>/dev/null || true
 fi
 
-# ---- Done ----
 echo ""
 echo -e "${GREEN}${BOLD}Done.${NC}"
-echo ""
-echo "Launch:"
-echo -e "  ${CYAN}./launch.sh${NC}"
-echo "  ${CYAN}cp lumex8.desktop ~/.local/share/applications/${NC}"
-echo ""
-echo "Controls: Super+P toggle | Right-click = AppBar | ⚙ = settings"
+echo -e "  ${CYAN}./launch.sh${NC}                    # Double-click or terminal"
+echo -e "  ${CYAN}cp lumex8.desktop ~/.local/share/applications/${NC}"
 echo ""
