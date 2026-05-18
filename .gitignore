@@ -31,6 +31,9 @@ project2/
 # Old/backup files
 *.old
 
+# Local secrets (never commit)
+git_token.md
+
 # OS files
 .DS_Store
 Thumbs.db
