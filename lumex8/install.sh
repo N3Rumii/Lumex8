@@ -20,13 +20,27 @@ cd "$PROJECT_ROOT"
 
 [ -f "lumex8/__main__.py" ] || { echo -e "${RED}Error: lumex8/ not found${NC}"; exit 1; }
 
+# Work out the real user (even under sudo) so uv installs to the right home
+if [ "$(id -u)" -eq 0 ] && [ -n "$SUDO_USER" ] && [ "$SUDO_USER" != "root" ]; then
+    REAL_USER="$SUDO_USER"
+    REAL_HOME=$(eval echo "~$SUDO_USER")
+else
+    REAL_USER="$(whoami)"
+    REAL_HOME="$HOME"
+fi
+export PATH="$REAL_HOME/.cargo/bin:$PATH"
+
 # ---- uv ----
 install_uv() {
-    echo -e "  ${YELLOW}→${NC} Installing uv..."
-    curl -LsSf https://astral.sh/uv/install.sh | sh
-    export PATH="$HOME/.cargo/bin:$PATH"
-    [ -f "$HOME/.cargo/env" ] && source "$HOME/.cargo/env"
-    echo -e "  ${GREEN}✓${NC} uv installed"
+    echo -e "  ${YELLOW}→${NC} Installing uv for $REAL_USER..."
+    if [ "$(id -u)" -eq 0 ] && [ "$REAL_USER" != "root" ]; then
+        su "$REAL_USER" -c 'curl -LsSf https://astral.sh/uv/install.sh | sh'
+    else
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+    fi
+    [ -f "$REAL_HOME/.cargo/env" ] && source "$REAL_HOME/.cargo/env"
+    export PATH="$REAL_HOME/.cargo/bin:$PATH"
+    echo -e "  ${GREEN}✓${NC} uv installed to $REAL_HOME/.cargo/bin"
 }
 
 command -v uv &>/dev/null || install_uv
@@ -70,6 +84,7 @@ fi
 LAUNCHER="$PROJECT_ROOT/launch.sh"
 cat > "$LAUNCHER" << EOF
 #!/usr/bin/env bash
+export PATH="\$HOME/.cargo/bin:\$PATH"
 cd "$PROJECT_ROOT"
 uv run "$PROJECT_ROOT/lumex8/__main__.py"
 EOF
