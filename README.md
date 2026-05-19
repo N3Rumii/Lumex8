@@ -2,26 +2,20 @@
 
 Windows 8 Metro-style tile launcher for Linux. Press **Super+P** to toggle.
 
-**Version:** 0.9.0-dev · **License:** GPL v3
+**Version:** 0.9.0 · **License:** GPL v3
 
 ---
 
-## Features
+## Few words from author
 
-- Tile grid with hover animations, rounded corners, and 3 size modes (1×1, 1×2, 2×2)
-- Right-click AppBar: Unpin, Resize, Edit, Color, Icon
-- Hide labels per tile (icon fills the tile)
-- System wallpaper detection (works on most desktop environments)
-- Drag-and-drop reordering with plugin state preservation
-- Slideshow background (folder + interval)
-- AppBar: icon labels toggle, spacing slider, dock background with opacity, alignment
-- Self-contained skin/theme system — save/export/import `.skin` ZIP archives
-- Gamepad navigation (d-pad, A/B/Y/START)
-- Plugin system — drop `.py` in `plugins/` for live tile content
-- System app importer (desktop entries, flatpak, snap, AppImage)
-- Hotkey recorder, system tray icon, floating start button
-- Kinetic inertial scrolling, collapsible settings, recolor all tiles with undo
-- Multi-terminal auto-detection
+Application was written for my personal use case, I work on graphical tablet and sometimes stream my setup to the mobile phones so it is helpful to have evn a bit of tablet like interface.
+Honestly I was fan of w8 when it came out, and when w10 came out i had a lot of driver issues that i didnt have on 8.1 so i was using it until the end of support.
+I managed to launch from Lumex emulator games(both ps4 and ps3) and steam games, i send emu  games to steam and then steam shortcut is somewhat supported inside Lumex. Main function is to add phyton scripts and launch them like normal aps, no .sh scripts or anything. Flatpacks, native aps and appimages are also suported. 
+I added live tile functionality though plugins, desktop tile from win8 start menu is in it too.
+It was vibe coded, especially this version. I dont feel bad with it, i kind of hate coding. I respect the hustle, i used to write some code myself and even now work on programing plc but normal programing? Well, Tedious so I like how it was done by the Ai. 
+I think install.sh for this script is not working correctly, i mean it works on my pop os but it had a lot of issues when i tried to install it on xubuntu in live test mode.
+Why Lumex8? Cuz Linux8 sounds like kernel version.
+
 
 ---
 
@@ -35,10 +29,6 @@ uv run python -m lumex8
 Requires Python 3.12+ and `libxcb-cursor0`.
 
 ---
-
-## Plugins
-
-Drop a `.py` into `plugins/` with `NAME`, optional `setup(tile)`, `run(window)`, and `CONFIG_FIELDS` for custom settings UI. Set `NO_SLIDE = True` for static tiles.
 
 ---
 
