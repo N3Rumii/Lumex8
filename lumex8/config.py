@@ -2,7 +2,32 @@
 
 import json
 import os
+import shutil
 
+
+def _detect_default_terminal() -> tuple[str, list[str]]:
+    """Return the (executable, args) of the first terminal found on PATH.
+
+    Falls back to ``("gnome-terminal", ["--"])`` if nothing is detected.
+    """
+    # Preferred order: match common desktop environments
+    candidates = [
+        ("konsole", ["-e"]),
+        ("gnome-terminal", ["--"]),
+        ("xfce4-terminal", ["-x"]),
+        ("kitty", ["--"]),
+        ("alacritty", ["-e"]),
+        ("xterm", ["-e"]),
+        ("terminator", ["-x"]),
+        ("foot", ["bash", "-c"]),
+    ]
+    for cmd, args in candidates:
+        if shutil.which(cmd):
+            return cmd, args
+    return "gnome-terminal", ["--"]
+
+
+_DEFAULT_TERMINAL, _DEFAULT_FLAGS = _detect_default_terminal()
 
 DEFAULT_CONFIG = {
     "settings": {
@@ -20,8 +45,8 @@ DEFAULT_CONFIG = {
         "tile_alpha": 255,
         "global_hotkey": "<cmd>+p",
         "gamepad_hotkey": "GUIDE",
-        "terminal_app": "gnome-terminal",
-        "terminal_flags": ["--"],
+        "terminal_app": _DEFAULT_TERMINAL,
+        "terminal_flags": _DEFAULT_FLAGS,
         "icon_theme": "default_theme",
         "appbar_accent_color": "#ffffff",
         "appbar_tint_icons": True,

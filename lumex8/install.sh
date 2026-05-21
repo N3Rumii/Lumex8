@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Lumex8 — single-command installer
+# Lumex8 — single-command installer (Debian / Fedora / openSUSE)
 #
 #   chmod +x install.sh
 #   ./install.sh               # guided (asks about gamepad)
@@ -30,6 +30,56 @@ else
 fi
 export PATH="$REAL_HOME/.cargo/bin:$PATH"
 
+# ---------------------------------------------------------------------------
+# Distro detection and package-manager abstraction
+# ---------------------------------------------------------------------------
+detect_distro() {
+    if grep -qi -E "debian|ubuntu|mint|kali" /etc/os-release 2>/dev/null; then
+        echo "debian"
+    elif grep -qi -E "fedora|rhel|centos|rocky|alma" /etc/os-release 2>/dev/null; then
+        echo "fedora"
+    elif grep -qi -E "suse|opensuse" /etc/os-release 2>/dev/null; then
+        echo "suse"
+    else
+        echo "unknown"
+    fi
+}
+
+DISTRO=$(detect_distro)
+
+case "$DISTRO" in
+    debian)
+        PKG_CHECK="dpkg -s"
+        PKG_INSTALL="sudo apt-get install -y -qq"
+        PKG_UPDATE="sudo apt-get update -qq 2>/dev/null || true"
+        # Debian package names (base names only)
+        pkg_xcb="libxcb-cursor0"
+        pkg_gamepad_base="libsdl2-2.0-0 libsdl2-image-2.0-0 libsdl2-mixer-2.0-0 libsdl2-ttf-2.0-0"
+        ;;
+    fedora)
+        PKG_CHECK="rpm -q"
+        PKG_INSTALL="sudo dnf install -y"
+        PKG_UPDATE="true"   # dnf auto-refreshes
+        pkg_xcb="libxcb-cursor"
+        pkg_gamepad_base="SDL2 SDL2_image SDL2_mixer SDL2_ttf"
+        ;;
+    suse)
+        PKG_CHECK="rpm -q"
+        PKG_INSTALL="sudo zypper install -y"
+        PKG_UPDATE="sudo zypper refresh 2>/dev/null || true"
+        pkg_xcb="libxcb-cursor0"
+        pkg_gamepad_base="libSDL2-2_0-0 libSDL2_image-2_0-0 libSDL2_mixer-2_0-0 libSDL2_ttf-2_0-0"
+        ;;
+    *)
+        echo -e "  ${RED}Unsupported distro (cannot detect apt/dnf/zypper).${NC}"
+        echo -e "  ${YELLOW}Please manually install:${NC}"
+        echo -e "    - A Qt 6 compatible cursor library (libxcb-cursor)"
+        echo -e "    - (optional) SDL2 + pygame for gamepad support"
+        echo -e "  ${CYAN}Then re-run this installer.${NC}"
+        exit 1
+        ;;
+esac
+
 # ---- uv ----
 install_uv() {
     echo -e "  ${YELLOW}→${NC} Installing uv for $REAL_USER..."
@@ -44,41 +94,54 @@ install_uv() {
 }
 
 command -v uv &>/dev/null || install_uv
-
 echo -e "  ${GREEN}✓${NC} uv $(uv --version 2>/dev/null | head -1)"
 
 # ---- System deps (Qt needs X11 cursor) ----
-if ! dpkg -s libxcb-cursor0 &>/dev/null 2>&1; then
-    echo -e "  ${YELLOW}→${NC} Installing libxcb-cursor0..."
-    sudo apt-get update -qq 2>/dev/null || true
-    sudo apt-get install -y -qq libxcb-cursor0
+if ! $PKG_CHECK "$pkg_xcb" &>/dev/null 2>&1; then
+    echo -e "  ${YELLOW}→${NC} Installing ${pkg_xcb}..."
+    $PKG_UPDATE
+    $PKG_INSTALL $pkg_xcb
 fi
-echo -e "  ${GREEN}✓${NC} libxcb-cursor0"
+echo -e "  ${GREEN}✓${NC} ${pkg_xcb}"
 
 # ---- Gamepad (optional) ----
 GAMEPAD_PKGS=""
 if [ "$(id -u)" -eq 0 ]; then
-    # Root: auto-include
-    GAMEPAD_PKGS="libsdl2-2.0-0 libsdl2-image-2.0-0 libsdl2-mixer-2.0-0 libsdl2-ttf-2.0-0"
+    GAMEPAD_PKGS="$pkg_gamepad_base"
     echo -e "  ${CYAN}→${NC} Running as root — including SDL2 + pygame for gamepad"
 else
     read -p "  Install gamepad support (SDL2 + pygame)? [y/N] " -r answer
     case "$answer" in
-        [yY]*) GAMEPAD_PKGS="libsdl2-2.0-0 libsdl2-image-2.0-0 libsdl2-mixer-2.0-0 libsdl2-ttf-2.0-0" ;;
+        [yY]*) GAMEPAD_PKGS="$pkg_gamepad_base" ;;
         *)     echo -e "  ${CYAN}→${NC} Skipping gamepad" ;;
     esac
 fi
 
 if [ -n "$GAMEPAD_PKGS" ]; then
     for pkg in $GAMEPAD_PKGS; do
-        dpkg -s "$pkg" &>/dev/null 2>&1 && echo -e "  ${GREEN}✓${NC} $pkg" || \
-            { sudo apt-get install -y -qq "$pkg" 2>/dev/null; \
+        $PKG_CHECK "$pkg" &>/dev/null 2>&1 && echo -e "  ${GREEN}✓${NC} $pkg" || 
+            { $PKG_INSTALL "$pkg" 2>/dev/null; 
               echo -e "  ${GREEN}✓${NC} $pkg (installed)"; }
     done
     # Install pygame into uv's environment
     uv pip install --system pygame 2>/dev/null || true
     echo -e "  ${GREEN}✓${NC} pygame (gamepad ready)"
 fi
+
+# ---- Terminal auto-detect (inform user) ----
+# config.py already auto-detects at runtime — we just report what's found.
+detect_terminal() {
+    for cmd in konsole gnome-terminal xfce4-terminal kitty alacritty xterm terminator foot; do
+        if command -v "$cmd" &>/dev/null; then
+            echo "$cmd"
+            return
+        fi
+    done
+    echo "unknown"
+}
+
+TERMINAL=$(detect_terminal)
+echo -e "  ${GREEN}✓${NC} Detected terminal: ${CYAN}${TERMINAL}${NC}"
 
 # ---- Launch script ----
 LAUNCHER="$PROJECT_ROOT/launch.sh"
