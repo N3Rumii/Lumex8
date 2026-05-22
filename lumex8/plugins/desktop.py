@@ -109,6 +109,47 @@ def _detect_system_wallpaper() -> str:
         except OSError:
             pass
 
+    # 5c — D-Bus query (works even without user config, e.g. live ISO)
+    for bus in ("qdbus", "qdbus6", "qdbus-qt6"):
+        for cid in range(1, 10):
+            result = _run(bus, "org.kde.plasmashell",
+                          f"/PlasmaShell", "org.kde.PlasmaShell",
+                          "wallpaper", str(cid))
+            if result:
+                candidate = _unwrap_uri(result)
+                if os.path.isfile(candidate):
+                    return candidate
+
+    # 5d — system-wide KDE / Fedora wallpaper dirs (live-ISO fallback)
+    for sys_dir in (
+        "/usr/share/wallpapers/Fedora",
+        "/usr/share/wallpapers/Next",
+        "/usr/share/wallpapers",
+        "/usr/share/backgrounds",
+        "/usr/share/backgrounds/fedora",
+    ):
+        if os.path.isdir(sys_dir):
+            for name in sorted(os.listdir(sys_dir)):
+                full = os.path.join(sys_dir, name)
+                if os.path.isfile(full) and name.lower().endswith(
+                    (".png", ".jpg", ".jpeg", ".webp", ".bmp")
+                ):
+                    # prefer "contents/images/" subdir (KDE wallpaper pkg layout)
+                    contents_img = os.path.join(sys_dir, name, "contents", "images")
+                    if os.path.isdir(contents_img):
+                        largest = ""
+                        largest_size = 0
+                        for img in os.listdir(contents_img):
+                            img_path = os.path.join(contents_img, img)
+                            if os.path.isfile(img_path):
+                                sz = os.path.getsize(img_path)
+                                if sz > largest_size:
+                                    largest_size = sz
+                                    largest = img_path
+                        if largest:
+                            return largest
+                    return full
+
     # 6 — Deepin
     uri = _run("gsettings", "get", "com.deepin.dde.appearance",
                "background-uris")

@@ -13,21 +13,21 @@ class FloatingStartButton(QWidget):
     Toggles the main launcher window on click. Supports auto-hide,
     text/image icons, and configurable color/position.
 
-    Uses ``Qt.Popup`` so the compositor (including Wayland) respects
-    the geometry set before ``show()``.
+    On Wayland we use a plain ``Window`` (not ``Popup``) because
+    Popups require a visible transient-parent that has received input.
+    ``setGeometry`` before ``show()`` gives the compositor a size hint
+    even if it ultimately decides placement.
     """
 
     def __init__(self, parent_window) -> None:
         super().__init__()
         self.parent_window = parent_window
 
-        flags = (
+        self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
-            | Qt.WindowType.Popup
+            | Qt.WindowType.Window
         )
-
-        self.setWindowFlags(flags)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         self.layout = QVBoxLayout(self)
@@ -83,9 +83,9 @@ class FloatingStartButton(QWidget):
             x = (geo.width() - w) // 2
         y = 0 if "Top" in pos else geo.height() - h
 
-        # Popup windows are positionable on most compositors (including Wayland).
-        # Use setGeometry + resize to set size, then show.
-        self.setGeometry(x, y, w, h)
+        # setGeometry + resize as a compositor size-hint, then show.
+        self.resize(w, h)
+        self.move(x, y)
         self.show()
         self.raise_()
 
