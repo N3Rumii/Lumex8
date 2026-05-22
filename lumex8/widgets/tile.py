@@ -138,9 +138,21 @@ class MetroTile(QPushButton):
         self.live_face.setFixedSize(width, height)
         self.live_face.move(0, height)
 
+    def _add_tile_icon(self) -> None:
+        """Set the add-tile icon, preferring theme icon over unicode."""
+        add_icon = QIcon.fromTheme("list-add")
+        if not add_icon.isNull():
+            px = add_icon.pixmap(self.icon_label.size(),
+                                 mode=QIcon.Mode.Normal,
+                                 state=QIcon.State.Off)
+            self.icon_label.setPixmap(px)
+        else:
+            # Fallback: bold '+' character (works on any font)
+            self.icon_label.setText("+")
+
     def update_content(self) -> None:
         if self.is_add:
-            self.icon_label.setText("\u2795")
+            self._add_tile_icon()
             self.text_label.setText("")
             self.text_label.hide()
         elif self.is_back:
@@ -158,8 +170,8 @@ class MetroTile(QPushButton):
 
     def update_icon_data(self) -> None:
         if self.is_add:
-            self.icon_label.setText("\u2795")
-            self.text_label.setText("")
+            self._add_tile_icon()
+            return
         else:
             self.text_label.setText(self.app_data.get("name", "Unknown"))
 
@@ -247,6 +259,7 @@ class MetroTile(QPushButton):
 
         if self.is_add:
             self.icon_label.setGeometry(0, 0, w, h)
+            self._add_tile_icon()
             self.text_label.hide()
         elif not show_text:
             # No text — icon fills entire tile

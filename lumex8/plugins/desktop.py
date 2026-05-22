@@ -81,7 +81,7 @@ def _detect_system_wallpaper() -> str:
                 content = f.read()
             # Match Image=... in the wallpaper plugin section
             for match in re.finditer(r"^Image=(.+)$", content, re.MULTILINE):
-                candidate = match.group(1).strip()
+                candidate = _unwrap_uri(match.group(1))
                 if os.path.isfile(candidate):
                     return candidate
         except OSError:
