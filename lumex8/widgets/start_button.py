@@ -1,10 +1,49 @@
 """Floating Start Button — persistent overlay button on the desktop."""
 
 import os
+import subprocess
+import tempfile
 
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QIcon, QFont, QFontMetrics
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QApplication
+
+
+def _kwin_move(title: str, x: int, y: int, w: int, h: int) -> None:
+    """Tell KWin to move a window to the given geometry via its scripting API.
+
+    Only works on KDE Plasma (X11 + Wayland). Silently no-ops elsewhere.
+    """
+    script = f"""
+var clients = workspace.clientList();
+for (var i = 0; i < clients.length; i++) {{
+    if (clients[i].caption == '{title}') {{
+        clients[i].geometry = {{ x: {x}, y: {y}, width: {w}, height: {h} }};
+        break;
+    }}
+}}
+"""
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".js", delete=False
+        ) as f:
+            f.write(script)
+            path = f.name
+        for bus in ("qdbus", "qdbus6", "qdbus-qt6"):
+            result = subprocess.run(
+                [bus, "org.kde.KWin", "/Scripting",
+                 "org.kde.kwin.Scripting.loadScript", path],
+                capture_output=True, text=True, timeout=4,
+            )
+            if result.returncode == 0:
+                break
+    except Exception:
+        pass
+    finally:
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
 
 
 class FloatingStartButton(QWidget):
@@ -13,15 +52,17 @@ class FloatingStartButton(QWidget):
     Toggles the main launcher window on click. Supports auto-hide,
     text/image icons, and configurable color/position.
 
-    On Wayland we use a plain ``Window`` (not ``Popup``) because
-    Popups require a visible transient-parent that has received input.
-    ``setGeometry`` before ``show()`` gives the compositor a size hint
-    even if it ultimately decides placement.
+    On KDE Plasma (X11 & Wayland) the window is repositioned via
+    KWin's scripting D-Bus API so the button docks to the chosen edge
+    even on compositors that ignore client-side geometry requests.
     """
+
+    _KWIN_TITLE = "Lumex8StartButton"
 
     def __init__(self, parent_window) -> None:
         super().__init__()
         self.parent_window = parent_window
+        self.setWindowTitle(self._KWIN_TITLE)
 
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
@@ -83,11 +124,16 @@ class FloatingStartButton(QWidget):
             x = (geo.width() - w) // 2
         y = 0 if "Top" in pos else geo.height() - h
 
-        # setGeometry + resize as a compositor size-hint, then show.
         self.resize(w, h)
         self.move(x, y)
         self.show()
         self.raise_()
+
+        # KWin reposition: after the window is painted, tell KWin to
+        # move it to the correct dock position via its scripting API.
+        def _reposition() -> None:
+            _kwin_move(self._KWIN_TITLE, x, y, w, h)
+        QTimer.singleShot(300, _reposition)
 
         r = "10px"
         corners = ""
