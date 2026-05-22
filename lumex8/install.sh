@@ -52,8 +52,8 @@ case "$DISTRO" in
         PKG_CHECK="dpkg -s"
         PKG_INSTALL="sudo apt-get install -y -qq"
         PKG_UPDATE="sudo apt-get update -qq 2>/dev/null || true"
-        # Debian package names (base names only)
         pkg_xcb="libxcb-cursor0"
+        pkg_headers="linux-headers-$(uname -r)"
         pkg_gamepad_base="libsdl2-2.0-0 libsdl2-image-2.0-0 libsdl2-mixer-2.0-0 libsdl2-ttf-2.0-0"
         ;;
     fedora)
@@ -61,6 +61,7 @@ case "$DISTRO" in
         PKG_INSTALL="sudo dnf install -y"
         PKG_UPDATE="true"   # dnf auto-refreshes
         pkg_xcb="xcb-util-cursor"
+        pkg_headers="kernel-headers"
         pkg_gamepad_base="SDL2 SDL2_image SDL2_mixer SDL2_ttf"
         ;;
     suse)
@@ -68,6 +69,7 @@ case "$DISTRO" in
         PKG_INSTALL="sudo zypper install -y"
         PKG_UPDATE="sudo zypper refresh 2>/dev/null || true"
         pkg_xcb="libxcb-cursor0"
+        pkg_headers="kernel-headers"
         pkg_gamepad_base="libSDL2-2_0-0 libSDL2_image-2_0-0 libSDL2_mixer-2_0-0 libSDL2_ttf-2_0-0"
         ;;
     *)
@@ -103,6 +105,14 @@ if ! $PKG_CHECK "$pkg_xcb" &>/dev/null 2>&1; then
     $PKG_INSTALL $pkg_xcb
 fi
 echo -e "  ${GREEN}✓${NC} ${pkg_xcb}"
+
+# ---- Kernel headers (needed to build evdev for pynput) ----
+if ! $PKG_CHECK "$pkg_headers" &>/dev/null 2>&1; then
+    echo -e "  ${YELLOW}→${NC} Installing ${pkg_headers}..."
+    $PKG_UPDATE
+    $PKG_INSTALL "$pkg_headers"
+fi
+echo -e "  ${GREEN}✓${NC} ${pkg_headers}"
 
 # ---- Gamepad (optional) ----
 GAMEPAD_PKGS=""
