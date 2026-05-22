@@ -54,6 +54,7 @@ case "$DISTRO" in
         PKG_UPDATE="sudo apt-get update -qq 2>/dev/null || true"
         pkg_xcb="libxcb-cursor0"
         pkg_headers="linux-headers-$(uname -r)"
+        pkg_build="build-essential"
         pkg_gamepad_base="libsdl2-2.0-0 libsdl2-image-2.0-0 libsdl2-mixer-2.0-0 libsdl2-ttf-2.0-0"
         ;;
     fedora)
@@ -62,6 +63,7 @@ case "$DISTRO" in
         PKG_UPDATE="true"   # dnf auto-refreshes
         pkg_xcb="xcb-util-cursor"
         pkg_headers="kernel-headers"
+        pkg_build="gcc python3-devel make"
         pkg_gamepad_base="SDL2 SDL2_image SDL2_mixer SDL2_ttf"
         ;;
     suse)
@@ -70,6 +72,7 @@ case "$DISTRO" in
         PKG_UPDATE="sudo zypper refresh 2>/dev/null || true"
         pkg_xcb="libxcb-cursor0"
         pkg_headers="kernel-headers"
+        pkg_build="gcc python3-devel make"
         pkg_gamepad_base="libSDL2-2_0-0 libSDL2_image-2_0-0 libSDL2_mixer-2_0-0 libSDL2_ttf-2_0-0"
         ;;
     *)
@@ -113,6 +116,15 @@ if ! $PKG_CHECK "$pkg_headers" &>/dev/null 2>&1; then
     $PKG_INSTALL "$pkg_headers"
 fi
 echo -e "  ${GREEN}✓${NC} ${pkg_headers}"
+
+# ---- Build toolchain (needed to compile evdev C extension) ----
+if ! $PKG_CHECK "$(echo $pkg_build | cut -d' ' -f1)" &>/dev/null 2>&1; then
+    echo -e "  ${YELLOW}→${NC} Installing build toolchain: ${pkg_build}..."
+    $PKG_UPDATE
+    # shellcheck disable=SC2086
+    $PKG_INSTALL $pkg_build
+fi
+echo -e "  ${GREEN}✓${NC} build toolchain (${pkg_build})"
 
 # ---- Gamepad (optional) ----
 GAMEPAD_PKGS=""
