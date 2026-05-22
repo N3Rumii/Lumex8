@@ -60,7 +60,7 @@ case "$DISTRO" in
         PKG_CHECK="rpm -q"
         PKG_INSTALL="sudo dnf install -y"
         PKG_UPDATE="true"   # dnf auto-refreshes
-        pkg_xcb="libxcb-cursor"
+        pkg_xcb="xcb-util-cursor"
         pkg_gamepad_base="SDL2 SDL2_image SDL2_mixer SDL2_ttf"
         ;;
     suse)
