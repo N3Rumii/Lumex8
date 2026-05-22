@@ -71,33 +71,43 @@ def _detect_system_wallpaper() -> str:
         if path and os.path.isfile(path):
             return path
 
-    # 5 — KDE Plasma 5/6 (read config file + kreadconfig5 fallback)
-    kde_config = os.path.expanduser(
-        "~/.config/plasma-org.kde.plasma.desktop-appletsrc"
-    )
+    # 5 — KDE Plasma 5/6 (kreadconfig + direct file parsing)
+    _kde_file = "plasma-org.kde.plasma.desktop-appletsrc"
+    kde_config = os.path.expanduser(f"~/.config/{_kde_file}")
+
+    # 5a — kreadconfig6 (Plasma 6) / kreadconfig5 (Plasma 5) fallback
+    for ktool in ("kreadconfig6", "kreadconfig5"):
+        for cid in range(1, 10):
+            for plugin in ("org.kde.image", "org.kde.slideshow"):
+                result = _run(ktool, "--file", _kde_file,
+                              "--group", "Containments",
+                              "--group", str(cid),
+                              "--group", "Wallpaper",
+                              "--group", plugin,
+                              "--group", "General",
+                              "--key", "Image")
+                if result:
+                    candidate = _unwrap_uri(result)
+                    if os.path.isfile(candidate):
+                        return candidate
+
+    # 5b — direct file parse (covers containments and plugins the
+    #       kreadconfig loop above might miss on Plasma 6)
     if os.path.isfile(kde_config):
         try:
             with open(kde_config, "r") as f:
                 content = f.read()
-            # Plasma 5/6: [Containments][N][Wallpaper][org.kde.image][General]
-            #            Image=file:///path
             for match in re.finditer(r"^Image=(.+)$", content, re.MULTILINE):
+                candidate = _unwrap_uri(match.group(1).strip())
+                if candidate and os.path.isfile(candidate):
+                    return candidate
+            # Also try PreviewImage (some Plasma 6 containments)
+            for match in re.finditer(r"^PreviewImage=(.+)$", content, re.MULTILINE):
                 candidate = _unwrap_uri(match.group(1).strip())
                 if candidate and os.path.isfile(candidate):
                     return candidate
         except OSError:
             pass
-
-    # 5b — KDE kreadconfig5 (system tool, more reliable across Plasma versions)
-    kde_tool = _run("kreadconfig5", "--file",
-                    "plasma-org.kde.plasma.desktop-appletsrc",
-                    "--group", "Containments", "--group", "1",
-                    "--group", "Wallpaper", "--group", "org.kde.image",
-                    "--group", "General", "--key", "Image")
-    if kde_tool:
-        candidate = _unwrap_uri(kde_tool)
-        if os.path.isfile(candidate):
-            return candidate
 
     # 6 — Deepin
     uri = _run("gsettings", "get", "com.deepin.dde.appearance",

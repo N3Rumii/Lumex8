@@ -1,23 +1,10 @@
 """Floating Start Button — persistent overlay button on the desktop."""
 
 import os
-import sys
 
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QIcon, QFont, QFontMetrics
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QApplication
-
-
-def _is_wayland() -> bool:
-    """True if running under a Wayland compositor."""
-    if os.environ.get("WAYLAND_DISPLAY"):
-        return True
-    if os.environ.get("XDG_SESSION_TYPE", "").lower() == "wayland":
-        return True
-    # Qt6: check native platform plugin
-    if QApplication.instance():
-        return QApplication.instance().platformName() == "wayland"
-    return False
 
 
 class FloatingStartButton(QWidget):
@@ -26,22 +13,19 @@ class FloatingStartButton(QWidget):
     Toggles the main launcher window on click. Supports auto-hide,
     text/image icons, and configurable color/position.
 
-    On Wayland the window-manager hint is omitted and geometry is
-    applied before show(); on X11 the classic bypass hint is used.
+    Uses ``Qt.Popup`` so the compositor (including Wayland) respects
+    the geometry set before ``show()``.
     """
 
     def __init__(self, parent_window) -> None:
         super().__init__()
         self.parent_window = parent_window
-        self._is_wayland = _is_wayland()
 
         flags = (
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
-            | Qt.WindowType.Tool
+            | Qt.WindowType.Popup
         )
-        if not self._is_wayland:
-            flags |= Qt.WindowType.X11BypassWindowManagerHint
 
         self.setWindowFlags(flags)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
@@ -99,22 +83,11 @@ class FloatingStartButton(QWidget):
             x = (geo.width() - w) // 2
         y = 0 if "Top" in pos else geo.height() - h
 
-        # On Wayland the compositor controls window placement.
-        # We force-create the native window, set its QWindow position
-        # before the surface is committed, then resize+show.
-        if self._is_wayland:
-            self.hide()
-            self.winId()          # force QWindow creation
-            wh = self.windowHandle()
-            if wh:
-                wh.setPosition(x, y)
-            self.resize(w, h)
-            self.show()
-            self.raise_()
-        else:
-            self.move(x, y)
-            self.show()
-            self.raise_()
+        # Popup windows are positionable on most compositors (including Wayland).
+        # Use setGeometry + resize to set size, then show.
+        self.setGeometry(x, y, w, h)
+        self.show()
+        self.raise_()
 
         r = "10px"
         corners = ""
