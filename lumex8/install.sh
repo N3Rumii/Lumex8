@@ -141,13 +141,11 @@ fi
 
 if [ -n "$GAMEPAD_PKGS" ]; then
     for pkg in $GAMEPAD_PKGS; do
-        $PKG_CHECK "$pkg" &>/dev/null 2>&1 && echo -e "  ${GREEN}✓${NC} $pkg" || 
-            { $PKG_INSTALL "$pkg" 2>/dev/null; 
+        $PKG_CHECK "$pkg" &>/dev/null 2>&1 && echo -e "  ${GREEN}✓${NC} $pkg" || \
+            { $PKG_INSTALL "$pkg" 2>/dev/null; \
               echo -e "  ${GREEN}✓${NC} $pkg (installed)"; }
     done
-    # Install pygame into uv's environment
-    uv pip install --system pygame 2>/dev/null || true
-    echo -e "  ${GREEN}✓${NC} pygame (gamepad ready)"
+    HAVE_GAMEPAD=1
 fi
 
 # ---- Terminal auto-detect (inform user) ----
@@ -165,13 +163,32 @@ detect_terminal() {
 TERMINAL=$(detect_terminal)
 echo -e "  ${GREEN}✓${NC} Detected terminal: ${CYAN}${TERMINAL}${NC}"
 
+# ---- Local venv (so deps live inside lumex8/, not uv cache) ----
+VENV_DIR="$PROJECT_ROOT/.venv"
+if [ ! -d "$VENV_DIR" ]; then
+    echo -e "  ${YELLOW}→${NC} Creating local venv in .venv/ ..."
+    uv venv "$VENV_DIR"
+fi
+echo -e "  ${GREEN}✓${NC} local venv (.venv/)"
+
+echo -e "  ${YELLOW}→${NC} Installing Python deps (PyQt6, pynput)..."
+uv pip install --python "$VENV_DIR/bin/python" PyQt6 pynput
+echo -e "  ${GREEN}✓${NC} Python deps installed"
+
+if [ -n "$HAVE_GAMEPAD" ]; then
+    uv pip install --python "$VENV_DIR/bin/python" pygame 2>/dev/null || true
+    echo -e "  ${GREEN}✓${NC} pygame (gamepad ready)"
+fi
+echo ""
+
 # ---- Launch script ----
 LAUNCHER="$PROJECT_ROOT/launch.sh"
 cat > "$LAUNCHER" << EOF
 #!/usr/bin/env bash
 export PATH="\$HOME/.cargo/bin:\$PATH"
 cd "$PROJECT_ROOT"
-uv run "$PROJECT_ROOT/lumex8/__main__.py"
+source "$VENV_DIR/bin/activate"
+python "$PROJECT_ROOT/lumex8/__main__.py"
 EOF
 chmod +x "$LAUNCHER"
 echo -e "  ${GREEN}✓${NC} launch.sh"

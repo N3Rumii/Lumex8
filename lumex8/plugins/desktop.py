@@ -71,7 +71,7 @@ def _detect_system_wallpaper() -> str:
         if path and os.path.isfile(path):
             return path
 
-    # 5 — KDE Plasma 5/6 (read config file)
+    # 5 — KDE Plasma 5/6 (read config file + kreadconfig5 fallback)
     kde_config = os.path.expanduser(
         "~/.config/plasma-org.kde.plasma.desktop-appletsrc"
     )
@@ -79,13 +79,25 @@ def _detect_system_wallpaper() -> str:
         try:
             with open(kde_config, "r") as f:
                 content = f.read()
-            # Match Image=... in the wallpaper plugin section
+            # Plasma 5/6: [Containments][N][Wallpaper][org.kde.image][General]
+            #            Image=file:///path
             for match in re.finditer(r"^Image=(.+)$", content, re.MULTILINE):
-                candidate = _unwrap_uri(match.group(1))
-                if os.path.isfile(candidate):
+                candidate = _unwrap_uri(match.group(1).strip())
+                if candidate and os.path.isfile(candidate):
                     return candidate
         except OSError:
             pass
+
+    # 5b — KDE kreadconfig5 (system tool, more reliable across Plasma versions)
+    kde_tool = _run("kreadconfig5", "--file",
+                    "plasma-org.kde.plasma.desktop-appletsrc",
+                    "--group", "Containments", "--group", "1",
+                    "--group", "Wallpaper", "--group", "org.kde.image",
+                    "--group", "General", "--key", "Image")
+    if kde_tool:
+        candidate = _unwrap_uri(kde_tool)
+        if os.path.isfile(candidate):
+            return candidate
 
     # 6 — Deepin
     uri = _run("gsettings", "get", "com.deepin.dde.appearance",

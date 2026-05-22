@@ -99,12 +99,22 @@ class FloatingStartButton(QWidget):
             x = (geo.width() - w) // 2
         y = 0 if "Top" in pos else geo.height() - h
 
-        # On Wayland, set geometry before show() (compositor controls
-        # positions otherwise); on X11, move() is fine.
+        # On Wayland the compositor controls window placement.
+        # We force-create the native window, set its QWindow position
+        # before the surface is committed, then resize+show.
         if self._is_wayland:
-            self.setGeometry(x, y, w, h)
+            self.hide()
+            self.winId()          # force QWindow creation
+            wh = self.windowHandle()
+            if wh:
+                wh.setPosition(x, y)
+            self.resize(w, h)
+            self.show()
+            self.raise_()
         else:
             self.move(x, y)
+            self.show()
+            self.raise_()
 
         r = "10px"
         corners = ""
