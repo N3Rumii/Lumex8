@@ -45,12 +45,74 @@ class AppEditorDialog(QDialog):
         self.setWindowFlags(
             self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint
         )
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #2d2d2d;
+                color: #e0e0e0;
+            }
+            QLabel {
+                color: #e0e0e0;
+                background: transparent;
+            }
+            QCheckBox {
+                color: #e0e0e0;
+                spacing: 8px;
+            }
+            QCheckBox::indicator {
+                width: 16px;
+                height: 16px;
+            }
+            QComboBox {
+                background-color: #3a3a3a;
+                color: #e0e0e0;
+                border: 1px solid #555;
+                border-radius: 4px;
+                padding: 4px 8px;
+            }
+            QComboBox:hover {
+                border-color: #6b8cce;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #3a3a3a;
+                color: #e0e0e0;
+                selection-background-color: #6b8cce;
+                border: 1px solid #555;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QLineEdit {
+                background-color: #3a3a3a;
+                color: #e0e0e0;
+                border: 1px solid #555;
+                border-radius: 4px;
+                padding: 4px 8px;
+            }
+            QLineEdit:focus {
+                border-color: #6b8cce;
+            }
+            QPushButton {
+                background-color: #3a3a3a;
+                color: #e0e0e0;
+                border: 1px solid #555;
+                border-radius: 4px;
+                padding: 6px 14px;
+            }
+            QPushButton:hover {
+                background-color: #4a4a4a;
+                border-color: #6b8cce;
+            }
+            QPushButton:pressed {
+                background-color: #555;
+            }
+        """)
 
         # Fallback color from Appearance settings, then hardcoded green
-        default_tile = "#00a300"
+        default_tile = "#6b8cce"
         if hasattr(self.parent_window, "config"):
             default_tile = self.parent_window.config["settings"].get(
-                "default_tile_color", "#00a300"
+                "default_tile_color", "#6b8cce"
             )
         self._selected_color: str = self.app_data.get("color", default_tile)
         self._imported_icon: str | None = None

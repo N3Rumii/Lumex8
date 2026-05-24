@@ -20,7 +20,13 @@ class AppBar(QWidget):
 
         self.hide()
         self.setFixedHeight(70)
-        self.setStyleSheet("background: transparent;")
+        # Qt6 requires WA_StyledBackground for stylesheet backgrounds
+        # to paint on custom QWidget subclasses.
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.setStyleSheet(
+            "background-color: #1a1a1a;"
+            "border: none;"
+        )
 
         # Dock bar — full-height colored background behind buttons
         self.dock_bar = QWidget(self)
@@ -46,24 +52,19 @@ class AppBar(QWidget):
         if enabled:
             dock_color = self.parent_window.config["settings"].get(
                 "appbar_dock_color",
-                self.parent_window.config["settings"].get("appbar_accent_color", "#00a300"),
+                self.parent_window.config["settings"].get("appbar_accent_color", "#6b8cce"),
             )
-            from PyQt6.QtGui import QColor as _QC
-            c = _QC(dock_color)
-            raw_alpha = self.parent_window.config["settings"].get("appbar_dock_opacity", 95)
-            alpha = max(0, min(255, int(raw_alpha * 255 / 100)))
-            r, g, b = c.red(), c.green(), c.blue()
             self.dock_bar.setStyleSheet(
-                f"background-color: rgba({r}, {g}, {b}, {alpha / 255:.2f});"
+                f"background-color: {dock_color};"
                 "border: none;"
             )
+            self.dock_bar.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
             self.dock_bar.show()
             self.dock_bar.lower()  # behind buttons
         else:
             self.dock_bar.hide()
-            # Restore default dark bar
             self.setStyleSheet(
-                "background-color: rgba(20, 20, 20, 0.95);"
+                "background-color: #1a1a1a;"
                 "border: none;"
             )
 

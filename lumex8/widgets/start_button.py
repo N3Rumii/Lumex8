@@ -9,6 +9,14 @@ from PyQt6.QtGui import QIcon, QFont, QFontMetrics
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QApplication
 
 
+def _is_wayland() -> bool:
+    """Detect whether the session is running under a Wayland compositor."""
+    return (
+        os.environ.get("WAYLAND_DISPLAY", "") != ""
+        or os.environ.get("XDG_SESSION_TYPE", "") == "wayland"
+    )
+
+
 def _kwin_move(title: str, x: int, y: int, w: int, h: int) -> None:
     """Tell KWin to move a window to the given geometry via its scripting API.
 
@@ -52,9 +60,8 @@ class FloatingStartButton(QWidget):
     Toggles the main launcher window on click. Supports auto-hide,
     text/image icons, and configurable color/position.
 
-    On KDE Plasma (X11 & Wayland) the window is repositioned via
-    KWin's scripting D-Bus API so the button docks to the chosen edge
-    even on compositors that ignore client-side geometry requests.
+    On KDE Plasma Wayland the window is repositioned via KWin's
+    scripting D-Bus API (client-side geometry is ignored there).
     """
 
     _KWIN_TITLE = "Lumex8StartButton"
@@ -67,7 +74,8 @@ class FloatingStartButton(QWidget):
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
-            | Qt.WindowType.Window
+            | Qt.WindowType.Tool
+            | Qt.WindowType.X11BypassWindowManagerHint
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
@@ -100,6 +108,9 @@ class FloatingStartButton(QWidget):
         if self.parent_window.isVisible() or not settings.get("visible", True):
             self.hide()
             return
+        else:
+            self.show()
+            self.raise_()
 
         h = settings.get("size", 60)
         pos = settings.get("position", "Bottom Left")
@@ -124,16 +135,14 @@ class FloatingStartButton(QWidget):
             x = (geo.width() - w) // 2
         y = 0 if "Top" in pos else geo.height() - h
 
-        self.resize(w, h)
         self.move(x, y)
-        self.show()
-        self.raise_()
 
-        # KWin reposition: after the window is painted, tell KWin to
-        # move it to the correct dock position via its scripting API.
-        def _reposition() -> None:
-            _kwin_move(self._KWIN_TITLE, x, y, w, h)
-        QTimer.singleShot(300, _reposition)
+        # On Wayland, KWin ignores client-side geometry — use its
+        # scripting D-Bus API to enforce dock position after paint.
+        if _is_wayland():
+            def _reposition() -> None:
+                _kwin_move(self._KWIN_TITLE, x, y, w, h)
+            QTimer.singleShot(300, _reposition)
 
         r = "10px"
         corners = ""

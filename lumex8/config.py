@@ -38,7 +38,7 @@ DEFAULT_CONFIG = {
         "background_value": "",
         "background_color": "#1d1d1d",
         "background_opacity": 100,
-        "default_tile_color": "#00a300",
+        "default_tile_color": "#6b8cce",
         "tile_size": 140,
         "group_columns": 2,
         "tile_radius": 0,

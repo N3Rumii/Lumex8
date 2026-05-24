@@ -18,6 +18,7 @@ class AppBarButton(QWidget):
         self._parent_bar = parent_bar
         self._hovered = False
         self._pressed = False
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
         accent_hex = parent_bar.parent_window.config["settings"].get(
             "appbar_accent_color", "#FFFFFF"

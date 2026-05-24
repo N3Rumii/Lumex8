@@ -58,6 +58,149 @@ class SettingsDialog(QDialog):
         self.setWindowFlags(
             self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint
         )
+        # Required in Qt6 for stylesheet backgrounds to paint on QDialog
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+
+        # ── Dark theme stylesheet so the dialog is readable on all DEs ──
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #2d2d2d;
+                color: #e0e0e0;
+            }
+            QTabWidget::pane {
+                background-color: #2d2d2d;
+                border: 1px solid #444;
+            }
+            QTabBar::tab {
+                background-color: #3a3a3a;
+                color: #ccc;
+                padding: 8px 16px;
+                border: 1px solid #444;
+                border-bottom: none;
+            }
+            QTabBar::tab:selected {
+                background-color: #2d2d2d;
+                color: #ffffff;
+                border-bottom: 2px solid #6b8cce;
+            }
+            QTabBar::tab:hover {
+                background-color: #4a4a4a;
+            }
+            QLabel {
+                color: #e0e0e0;
+                background: transparent;
+            }
+            QCheckBox {
+                color: #e0e0e0;
+                spacing: 8px;
+            }
+            QCheckBox::indicator {
+                width: 16px;
+                height: 16px;
+            }
+            QComboBox {
+                background-color: #3a3a3a;
+                color: #e0e0e0;
+                border: 1px solid #555;
+                border-radius: 4px;
+                padding: 4px 8px;
+            }
+            QComboBox:hover {
+                border-color: #6b8cce;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #3a3a3a;
+                color: #e0e0e0;
+                selection-background-color: #6b8cce;
+                border: 1px solid #555;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QSpinBox {
+                background-color: #3a3a3a;
+                color: #e0e0e0;
+                border: 1px solid #555;
+                border-radius: 4px;
+                padding: 4px 8px;
+            }
+            QLineEdit {
+                background-color: #3a3a3a;
+                color: #e0e0e0;
+                border: 1px solid #555;
+                border-radius: 4px;
+                padding: 4px 8px;
+            }
+            QLineEdit:focus {
+                border-color: #6b8cce;
+            }
+            QPushButton {
+                background-color: #3a3a3a;
+                color: #e0e0e0;
+                border: 1px solid #555;
+                border-radius: 4px;
+                padding: 6px 14px;
+            }
+            QPushButton:hover {
+                background-color: #4a4a4a;
+                border-color: #6b8cce;
+            }
+            QPushButton:pressed {
+                background-color: #555;
+            }
+            QSlider::groove:horizontal {
+                background: #3a3a3a;
+                height: 6px;
+                border-radius: 3px;
+            }
+            QSlider::handle:horizontal {
+                background: #6b8cce;
+                width: 14px;
+                height: 14px;
+                margin: -5px 0;
+                border-radius: 7px;
+            }
+            QSlider::sub-page:horizontal {
+                background: #6b8cce;
+                border-radius: 3px;
+            }
+            QListWidget {
+                background-color: #3a3a3a;
+                color: #e0e0e0;
+                border: 1px solid #555;
+                border-radius: 4px;
+            }
+            QListWidget::item:selected {
+                background-color: #6b8cce;
+                color: #ffffff;
+            }
+            QListWidget::item:hover {
+                background-color: #4a4a4a;
+            }
+            QScrollArea {
+                background-color: transparent;
+                border: none;
+            }
+            QScrollBar:vertical {
+                background: #2d2d2d;
+                width: 8px;
+                border-radius: 4px;
+            }
+            QScrollBar::handle:vertical {
+                background: #555;
+                border-radius: 4px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #6b8cce;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0;
+            }
+            QFrame {
+                border: none;
+            }
+        """)
 
         # Local working copy of the config
         self._settings: dict = {}
@@ -308,7 +451,7 @@ class SettingsDialog(QDialog):
         self.recolor_color_btn = QPushButton()
         self.recolor_color_btn.setFixedSize(40, 28)
         self.recolor_color_btn.setStyleSheet(
-            f"background-color: {self._settings['settings'].get('default_tile_color', '#00a300')};"
+            f"background-color: {self._settings['settings'].get('default_tile_color', '#6b8cce')};"
         )
         self.recolor_color_btn.clicked.connect(self._pick_recolor)
         recolor_form.addRow("Target color:", self.recolor_color_btn)
@@ -510,7 +653,7 @@ class SettingsDialog(QDialog):
         lbl = QLabel(text)
         lbl.setStyleSheet(
             "font-weight: bold; font-size: 13px; "
-            "padding: 6px 0 2px 0; color: #00a300;"
+            "padding: 6px 0 2px 0; color: #6b8cce;"
         )
         return lbl
 
@@ -872,7 +1015,7 @@ class SettingsDialog(QDialog):
         elif target == "appbar_accent_color":
             current = self._settings["settings"].get("appbar_accent_color", "#ffffff")
         elif target == "default_tile_color":
-            current = self._settings["settings"].get("default_tile_color", "#00a300")
+            current = self._settings["settings"].get("default_tile_color", "#6b8cce")
         elif target == "start_btn_color":
             current = self._settings.get("start_btn", {}).get("color", "rgba(255,255,255,0.2)")
             # Try to parse as hex if it's rgba
@@ -881,7 +1024,7 @@ class SettingsDialog(QDialog):
         elif target == "appbar_dock_color":
             current = self._settings["settings"].get(
                 "appbar_dock_color",
-                self._settings["settings"].get("appbar_accent_color", "#00a300"),
+                self._settings["settings"].get("appbar_accent_color", "#6b8cce"),
             )
         elif target == "icon_override_color":
             current = (
@@ -927,18 +1070,18 @@ class SettingsDialog(QDialog):
         )
         self._apply_btn_color(
             self.default_tile_color_btn,
-            self._settings["settings"].get("default_tile_color", "#00a300"),
+            self._settings["settings"].get("default_tile_color", "#6b8cce"),
         )
         sb_color = self._settings.get("start_btn", {}).get("color", "rgba(255,255,255,0.2)")
         self._apply_btn_color(self.sb_color_btn, sb_color)
 
         dock_color = self._settings["settings"].get(
             "appbar_dock_color",
-            self._settings["settings"].get("appbar_accent_color", "#00a300"),
+            self._settings["settings"].get("appbar_accent_color", "#6b8cce"),
         )
         self._apply_btn_color(self.appbar_dock_color_btn, dock_color)
 
-        self._apply_btn_color(self.recolor_color_btn, self._settings["settings"].get("default_tile_color", "#00a300"))
+        self._apply_btn_color(self.recolor_color_btn, self._settings["settings"].get("default_tile_color", "#6b8cce"))
 
     @staticmethod
     def _apply_btn_color(btn: QPushButton, color: str) -> None:
@@ -950,14 +1093,14 @@ class SettingsDialog(QDialog):
     # Recolor all tiles
     # ------------------------------------------------------------------
     def _pick_recolor(self) -> None:
-        color = QColorDialog.getColor(QColor("#00a300"), self, "Pick Tile Color")
+        color = QColorDialog.getColor(QColor("#6b8cce"), self, "Pick Tile Color")
         if color.isValid():
             hex_color = color.name()
             self._apply_btn_color(self.recolor_color_btn, hex_color)
             self._recolor_target = hex_color
 
     def _apply_recolor(self) -> None:
-        target = getattr(self, "_recolor_target", "#00a300")
+        target = getattr(self, "_recolor_target", "#6b8cce")
         # Save current colors for undo
         self._recolor_undo = []
         for grp in self.parent_window.config.get("groups", []):
@@ -1013,7 +1156,7 @@ class SettingsDialog(QDialog):
         # dock_color is already stored in _settings via pick_color()
         settings["appbar_dock_color"] = self._settings["settings"].get(
             "appbar_dock_color",
-            settings.get("appbar_accent_color", "#00a300"),
+            settings.get("appbar_accent_color", "#6b8cce"),
         )
 
         # Start Button
@@ -1146,7 +1289,7 @@ class SettingsDialog(QDialog):
             A tuple of hex colour strings ``(bg, tile, accent)``.
         """
         bg = theme.get("background_color", "#1d1d1d")
-        tile = theme.get("default_tile_color", "#00a300")
+        tile = theme.get("default_tile_color", "#6b8cce")
         accent = theme.get("appbar_accent_color", "#ffffff")
         return bg, tile, accent
 
@@ -1271,7 +1414,7 @@ class SettingsDialog(QDialog):
             "background_value": bg_val,
             "background_color": settings.get("background_color", "#1d1d1d"),
             "background_opacity": settings.get("background_opacity", 100),
-            "default_tile_color": settings.get("default_tile_color", "#00a300"),
+            "default_tile_color": settings.get("default_tile_color", "#6b8cce"),
             "appbar_accent_color": settings.get("appbar_accent_color", "#ffffff"),
             "tile_size": settings.get("tile_size", 140),
             "group_columns": settings.get("group_columns", 2),
@@ -1285,7 +1428,7 @@ class SettingsDialog(QDialog):
             "appbar_dock_bar": settings.get("appbar_dock_bar", False),
             "appbar_dock_color": settings.get(
                 "appbar_dock_color",
-                settings.get("appbar_accent_color", "#00a300"),
+                settings.get("appbar_accent_color", "#6b8cce"),
             ),
             # Start button overrides
             "sb_visible": sb.get("visible", True),

@@ -16,6 +16,21 @@ Run with:
 import os
 import sys
 
+# ── Work around KDE/GNOME hybrid environments ──────────────────────
+# Must be set BEFORE any PyQt6 import, otherwise the platform plugin
+# and theme engine are already loaded with the wrong configuration.
+
+# 1. plasma-integration forces KDE's Breeze theme — breaks rendering
+#    and window placement on GNOME/Wayland.
+if os.environ.get("QT_QPA_PLATFORMTHEME", "").startswith(("kde", "KDE")):
+    del os.environ["QT_QPA_PLATFORMTHEME"]
+
+# 2. On Wayland, client-side window placement is unsupported.  Force
+#    the XCB (X11) backend so move(), Tool, and X11Bypass hint work
+#    via Xwayland.
+if os.environ.get("XDG_SESSION_TYPE", "") == "wayland":
+    os.environ["QT_QPA_PLATFORM"] = "xcb"
+
 # Allow running as a standalone script (uv run __main__.py)
 # while keeping package-relative imports working.
 _this_dir = os.path.dirname(os.path.abspath(__file__))
@@ -43,6 +58,11 @@ def main() -> None:
     )
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
+
+    # 3. Belt-and-suspenders: Fusion style is Qt6's built-in cross-
+    #    platform style — works everywhere regardless of installed
+    #    theme plugins (KDE Breeze, GTK, etc.).
+    app.setStyle("Fusion")
 
     font = QFont("Segoe UI", 10)
     app.setFont(font)

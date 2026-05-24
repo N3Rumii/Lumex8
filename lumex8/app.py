@@ -302,6 +302,27 @@ class LauncherWindow(QMainWindow):
 
         # Cog dropdown menu
         cog_menu = QMenu(self.cog_btn)
+        cog_menu.setStyleSheet("""
+            QMenu {
+                background-color: #2d2d2d;
+                color: #e0e0e0;
+                border: 1px solid #555;
+                padding: 4px;
+            }
+            QMenu::item {
+                padding: 6px 24px;
+                border-radius: 3px;
+            }
+            QMenu::item:selected {
+                background-color: #6b8cce;
+                color: #ffffff;
+            }
+            QMenu::separator {
+                height: 1px;
+                background: #555;
+                margin: 4px 8px;
+            }
+        """)
         self.toggle_edit_action = cog_menu.addAction("\u270e Add Tiles")
         self.toggle_edit_action.setCheckable(True)
         self.toggle_edit_action.triggered.connect(self._on_edit_action)

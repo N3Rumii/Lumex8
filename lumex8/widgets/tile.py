@@ -287,7 +287,7 @@ class MetroTile(QPushButton):
         painter.scale(self._scale, self._scale)
         painter.translate(-c)
 
-        def_color = self.parent_window.config["settings"].get("default_tile_color", "#00a300")
+        def_color = self.parent_window.config["settings"].get("default_tile_color", "#6b8cce")
         bg_color = QColor(self.app_data.get("color", def_color))
         alpha = self.parent_window.config["settings"].get("tile_alpha", 255)
         bg_color.setAlpha(alpha)
@@ -612,6 +612,22 @@ class MetroTile(QPushButton):
             # Fallback simple menu
             menu = QMenu(self)
             menu.setWindowFlags(menu.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
+            menu.setStyleSheet("""
+                QMenu {
+                    background-color: #2d2d2d;
+                    color: #e0e0e0;
+                    border: 1px solid #555;
+                    padding: 4px;
+                }
+                QMenu::item {
+                    padding: 6px 24px;
+                    border-radius: 3px;
+                }
+                QMenu::item:selected {
+                    background-color: #6b8cce;
+                    color: #ffffff;
+                }
+            """)
             menu.addAction("Delete", self.request_delete)
             menu.exec(self.mapToGlobal(event.pos()))
 
